@@ -73,38 +73,88 @@ const FoodDetails: React.FC = () => {
 
   useEffect(() => {
     async function loadFood(): Promise<void> {
-      // Load a specific food with extras based on routeParams id
+      const foodsResponse = await api.get<Food>(`/foods/${routeParams.id}`);
+      const getFood: Food = {
+        ...foodsResponse.data,
+        formattedPrice: formatValue(foodsResponse.data.price),
+      };
+
+      setFood(getFood);
+      setExtras(getFood.extras.map(e => ({ ...e, quantity: 0 })));
     }
 
     loadFood();
   }, [routeParams]);
 
   function handleIncrementExtra(id: number): void {
-    // Increment extra quantity
+    const extraIndex = extras.findIndex(extra => extra.id === id);
+    const extra = extras[extraIndex];
+
+    extras[extraIndex] = {
+      ...extra,
+      quantity: extra.quantity + 1,
+    };
+
+    setExtras([...extras]);
   }
 
   function handleDecrementExtra(id: number): void {
-    // Decrement extra quantity
+    const extraIndex = extras.findIndex(extra => extra.id === id);
+    const extra = extras[extraIndex];
+
+    const quantity = extra.quantity - 1;
+
+    extras[extraIndex] = {
+      ...extra,
+      quantity: quantity < 0 ? 0 : quantity,
+    };
+
+    setExtras([...extras]);
   }
 
   function handleIncrementFood(): void {
-    // Increment food quantity
+    setFoodQuantity(foodQuantity + 1);
   }
 
   function handleDecrementFood(): void {
-    // Decrement food quantity
+    if (foodQuantity > 1) {
+      setFoodQuantity(foodQuantity - 1);
+    }
   }
 
   const toggleFavorite = useCallback(() => {
-    // Toggle if food is favorite or not
+    const isFav = !isFavorite;
+
+    setIsFavorite(isFav);
   }, [isFavorite, food]);
 
   const cartTotal = useMemo(() => {
-    // Calculate cartTotal
+    let price = food.price * foodQuantity;
+
+    extras.forEach(extra => {
+      price += extra.value * extra.quantity;
+    });
+
+    return formatValue(price);
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
-    // Finish the order and save on the API
+    let price = food.price * foodQuantity;
+
+    extras.forEach(extra => {
+      price += extra.value * extra.quantity;
+    });
+
+    const orderFood = {
+      ...food,
+      extras,
+      price,
+    };
+
+    delete orderFood.id;
+    await api.post('orders', orderFood);
+
+    navigation.goBack();
   }
 
   // Calculate the correct icon name
